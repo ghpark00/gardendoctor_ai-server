@@ -160,48 +160,38 @@ async def diagnose_by_url(
         disease_info=models.DiseaseInfo(**disease_info)
     )
 
-# --- ✨ 여기에 새로운 피드백 API 추가 ✨ ---
 @app.post(
     "/diagnoses/{diagnosis_id}/feedback",
-    summary="진단 결과에 대한 피드백 제출",
-    description="진단 ID를 통해 특정 진단 결과에 대한 사용자의 피드백(정확 여부, 실제 병명 등)을 저장합니다.",
+    summary="진단 결과에 대한 피드백 제출 (개선 버전)",
+    description="진단 ID를 통해 특정 진단 결과에 대한 사용자의 만족/불만족 피드백을 저장합니다.",
     response_model=SuccessResponse,
-    responses={
-        404: {"model": ErrorResponse, "description": "해당 ID의 진단 기록을 찾을 수 없음"},
-    }
+    # ...
 )
-
 async def create_feedback(
     diagnosis_id: int = Path(..., description="피드백을 남길 진단 기록의 ID", example=1),
-    feedback_data: FeedbackRequest = Body(...), 
+    feedback_data: FeedbackRequest = Body(...), # 수정된 Pydantic 모델 사용
     db: Session = Depends(get_db)
 ):
-    """
-    - **diagnosis_id**: 피드백을 남기고자 하는 진단 기록의 고유 ID입니다.
-    - **feedback_data**: 피드백 내용을 담은 JSON 데이터입니다.
-    - `is_correct` (bool): AI 진단이 맞았는지 여부
-    - `correct_disease_name` (str, optional): 틀렸을 경우, 실제 병명
-    """
-    # 1. 해당 ID의 진단 기록이 있는지 확인
+    # 1. 해당 ID의 진단 기록이 있는지 확인 (기존과 동일)
     diagnosis = db.query(database.Diagnosis).filter(database.Diagnosis.id == diagnosis_id).first()
     if not diagnosis:
         raise HTTPException(status_code=404, detail="해당 ID의 진단 기록을 찾을 수 없습니다.")
 
-    # 2. 이미 피드백이 있는지 확인 (선택사항: 중복 제출 방지)
+    # 2. 이미 피드백이 있는지 확인 (기존과 동일)
     existing_feedback = db.query(database.Feedback).filter(database.Feedback.diagnosis_id == diagnosis_id).first()
     if existing_feedback:
         raise HTTPException(status_code=400, detail="이미 해당 진단에 대한 피드백이 존재합니다.")
     
-    # 3. 새 피드백 기록 생성 및 저장
+    # 3. 새 피드백 기록 생성 및 저장 (수정된 내용)
     new_feedback = database.Feedback(
         diagnosis_id=diagnosis_id,
-        is_correct=feedback_data.is_correct,
-        user_provided_disease=feedback_data.correct_disease_name
+        is_satisfied=feedback_data.is_satisfied,
+        comment=feedback_data.comment
     )
     db.add(new_feedback)
     db.commit()
 
-    return SuccessResponse(message="피드백이 성공적으로 저장되었습니다! 추후 AI모델 개발에 보탬이 됩니다.")
+    return SuccessResponse(message="소중한 피드백 감사합니다! AI 모델 개선에 큰 도움이 됩니다.")
 
 #  -- 챗봇 --
 @app.post("/api/chat")

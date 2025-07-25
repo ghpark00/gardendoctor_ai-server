@@ -1,6 +1,6 @@
 # app/database.py
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, ForeignKey, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -42,16 +42,20 @@ class Diagnosis(Base):
 
 
 class Feedback(Base):
-    """사용자 피드백을 저장하는 테이블"""
-    __tablename__ = "feedbacks"
+    __tablename__ = "feedback"
 
     id = Column(Integer, primary_key=True, index=True)
-    diagnosis_id = Column(Integer, ForeignKey("diagnoses.id"))
-    is_correct = Column(Boolean)
-    user_provided_disease = Column(String, nullable=True) # 사용자가 제공한 실제 병명
-    feedback_timestamp = Column(DateTime, default=datetime.utcnow)
+    diagnosis_id = Column(Integer, ForeignKey("diagnosis.id"), unique=True) # 한 진단에 하나의 피드백
+    
+    # --- 수정된 컬럼 ---
+    is_satisfied = Column(Boolean, nullable=False)
+    comment = Column(String, nullable=True)
+    
+    # --- 기존 컬럼 삭제 또는 주석 처리 ---
+    # is_correct = Column(Boolean)
+    # user_provided_disease = Column(String, nullable=True)
 
-    # Diagnosis 테이블과의 관계 설정
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     diagnosis = relationship("Diagnosis", back_populates="feedback")
 
 

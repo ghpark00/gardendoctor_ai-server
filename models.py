@@ -23,10 +23,10 @@ class DiagnosisResult(BaseModel):
 
 class FeedbackRequest(BaseModel):
     """
-    피드백 제출 시 요청 본문 모델
+    피드백 제출 시 요청 본문 모델 (개선된 버전)
     """
-    is_correct: bool = Field(..., description="AI의 예측이 정확했는지 여부", example=False)
-    correct_disease_name: Optional[str] = Field(None, description="예측이 틀렸을 경우, 실제 병명", example="단호박점무늬병")
+    is_satisfied: bool = Field(..., description="AI의 진단 결과에 만족했는지 여부 (True: 만족, False: 불만족)", example=True)
+    comment: Optional[str] = Field(None, description="추가적인 의견이나 코멘트", example="이미지가 좀 흐렸는데 잘 맞춘 것 같아요.")
 
 class SuccessResponse(BaseModel):
     """
