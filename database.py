@@ -45,7 +45,7 @@ class Feedback(Base):
     __tablename__ = "feedback"
 
     id = Column(Integer, primary_key=True, index=True)
-    diagnosis_id = Column(Integer, ForeignKey("diagnosis.id"), unique=True) # 한 진단에 하나의 피드백
+    diagnosis_id = Column(Integer, ForeignKey("diagnoses.id"), unique=True) # 한 진단에 하나의 피드백
     
     # --- 수정된 컬럼 ---
     is_satisfied = Column(Boolean, nullable=False)
