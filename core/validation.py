@@ -5,12 +5,12 @@ import io
 
 # YOLOv8n 모델 로드 (사전 학습된 범용 모델)
 # 실제 서비스에서는 '잎', '줄기' 등 특정 객체를 학습시킨 커스텀 모델 사용을 권장합니다.
-model = YOLO('ai_models\yolov8n.pt') 
+model = YOLO(r'ai_models\val_yolo_ver2.pt') 
 
 # COCO 데이터셋에서 식물, 과일, 채소와 관련 있는 객체 목록
 # 커스텀 모델을 사용한다면 ['leaf', 'stem', 'fruit'] 와 같이 변경할 수 있습니다.
 RELEVANT_OBJECT_NAMES = [
-    'potted plant', 'apple', 'orange', 'banana', 'broccoli', 'carrot', 'vase'
+    'plant', 'vegetable'
 ]
 
 def validate_image_content(image_bytes: bytes) -> tuple[bool, str]:
@@ -27,7 +27,7 @@ def validate_image_content(image_bytes: bytes) -> tuple[bool, str]:
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
-        results = model(image, verbose=False) # 모델 추론 (상세 로그 비활성화)
+        results = model(image, conf=0.25, verbose=False) # 모델 추론 (상세 로그 비활성화)
 
         # 탐지된 모든 객체 이름을 추출
         detected_names = {model.names[int(c)] for r in results for c in r.boxes.cls}
