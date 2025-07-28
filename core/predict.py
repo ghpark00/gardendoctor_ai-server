@@ -30,6 +30,22 @@ MODEL_CONFIG = {
         "model_path": r"ai_models\best_k_melon_classifier_811.pth", # 참외 모델 경로 (예시)
         "class_names": ['정상', '참외노균병', '참외흰가루병'] # 참외 모델 학습 시 클래스 순서
     },
+    "others": {
+        "model_path": r"ai_models\finetuned_model.pth", 
+        "class_names": ['Apple___Apple_scab', 'Apple___Black_rot', 'Apple___Cedar_apple_rust',
+                'Apple___healthy', 'Blueberry___healthy', 'Cherry_(including_sour)___Powdery_mildew',
+                'Cherry_(including_sour)___healthy', 'Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot',
+                'Corn_(maize)___Common_rust_', 'Corn_(maize)___Northern_Leaf_Blight',
+                'Corn_(maize)___healthy', 'Grape___Black_rot', 'Grape___Esca_(Black_Measles)',
+                'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)', 'Grape___healthy',
+                'Orange___Haunglongbing_(Citrus_greening)', 'Peach___Bacterial_spot', 'Peach___healthy',
+                'Pepper,_bell___Bacterial_spot', 'Pepper,_bell___healthy', 'Potato___Early_blight',
+                'Potato___Late_blight', 'Potato___healthy', 'Raspberry___healthy', 'Soybean___healthy',
+                'Squash___Powdery_mildew', 'Strawberry___Leaf_scorch', 'Strawberry___healthy',
+                'Tomato___Bacterial_spot', 'Tomato___Early_blight', 'Tomato___Late_blight', 'Tomato___Leaf_Mold',
+                'Tomato___Septoria_leaf_spot', 'Tomato___Spider_mites Two-spotted_spider_mite', 'Tomato___Target_Spot',
+                'Tomato___Tomato_Yellow_Leaf_Curl_Virus', 'Tomato___Tomato_mosaic_virus', 'Tomato___healthy'] 
+    }
     
     # 여기에 새로운 작물 모델 정보를 계속 추가할 수 있습니다.
     # "tomato": {
@@ -115,16 +131,25 @@ def predict_disease(crop_name: str, image_bytes: bytes) -> tuple:
         probabilities = F.softmax(outputs, dim=1)
         confidence, predicted_idx = torch.max(probabilities, 1)
 
-    predicted_class_name = class_names[predicted_idx.item()]
+    predicted_class_name = class_names[predicted_idx.item()] # 예: "Apple___Apple_scab"
     confidence_score = confidence.item() * 100
 
-    # 4. 예측된 클래스 이름으로 config.py에서 상세 정보 찾기
+    # 4. 예측된 클래스 이름으로 config.py에서 상세 정보 찾기 (수정된 로직)
     crop_disease_info = DISEASE_CLASSES.get(crop_name, {})
     final_info = None
-    for key, info in crop_disease_info.items():
-        if info.get("name") == predicted_class_name:
-            final_info = info
-            break
+
+    # 'others' 모델의 경우 영어 이름(eng_name)으로 정보를 찾음
+    if crop_name == "others":
+        for key, info in crop_disease_info.items():
+            if info.get("eng_name") == predicted_class_name:
+                final_info = info
+                break
+    # 다른 모델들은 기존처럼 한글 이름(name)으로 정보를 찾음
+    else:
+        for key, info in crop_disease_info.items():
+            if info.get("name") == predicted_class_name:
+                final_info = info
+                break
     
     if not final_info:
         return None, 0.0, f"'{predicted_class_name}'에 대한 상세 정보를 config.py에서 찾을 수 없습니다."
