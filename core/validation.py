@@ -27,7 +27,8 @@ def validate_image_content(image_bytes: bytes) -> tuple[bool, str]:
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
-        results = model(image, conf=0.25, verbose=False) # 모델 추론 (상세 로그 비활성화)
+        results = model(image, conf=0.2, verbose=False) # 모델 추론 (상세 로그 비활성화)
+        
 
         # 탐지된 모든 객체 이름을 추출
         detected_names = {model.names[int(c)] for r in results for c in r.boxes.cls}
