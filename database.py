@@ -59,6 +59,32 @@ class Feedback(Base):
     diagnosis = relationship("Diagnosis", back_populates="feedback")
 
 
+class ChatSession(Base):
+    """챗봇 세션을 저장하는 테이블"""
+    __tablename__ = "chat_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # ChatMessage 테이블과의 관계 설정
+    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    """챗봇 메시지를 저장하는 테이블"""
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False)
+    role = Column(String, nullable=False)  # "user" 또는 "assistant"
+    query = Column(String, nullable=False)  # 메시지 내용 (content → query로 변경)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # ChatSession 테이블과의 관계 설정
+    session = relationship("ChatSession", back_populates="messages")
+
+
 # 데이터베이스 테이블을 생성하는 함수
 def create_db_and_tables():
     Base.metadata.create_all(bind=engine)

@@ -10,7 +10,11 @@ import requests
 # --- 데이터베이스 및 모델 관련 임포트 ---
 import database
 import models 
-from models import DiagnosisResult, ErrorResponse, AnalysisRequest, FeedbackRequest, SuccessResponse, QueryRequest, ChatResponse
+from models import (
+    DiagnosisResult, ErrorResponse, AnalysisRequest, FeedbackRequest, SuccessResponse, 
+    QueryRequest, ChatResponse, ChatSessionResponse, ChatSessionWithMessages,
+    ChatRequest, ChatMessage
+)
 from langgraph_agent_react import run_agent
 
 # --- 수정된 진단 함수 임포트 ---
@@ -185,7 +189,183 @@ async def create_feedback(
 
     return SuccessResponse(message="소중한 피드백 감사합니다! AI 모델 개선에 큰 도움이 됩니다.")
 
-@app.post("/api/chat")
-async def chat_endpoint(req: QueryRequest):
-    answer = await run_agent(req.query)
-    return ChatResponse(answer=answer)
+# --- 챗봇 세션 관리 API ---
+@app.get(
+        "/api/chat/sessions", 
+        summary="챗봇 대화(세션) 목록 조회",
+        description="모든 챗봇 대화 목록을 조회합니다.",
+        response_model=list[ChatSessionResponse]
+        )
+async def get_chat_sessions(
+    db: Session = Depends(get_db)
+    ):
+    """모든 챗봇 세션 목록을 조회합니다."""
+    sessions = db.query(database.ChatSession).order_by(database.ChatSession.updated_at.desc()).all()
+    
+    result = []
+    for session in sessions:
+        # 첫 번째 사용자 메시지를 제목으로 사용
+        first_message = db.query(database.ChatMessage).filter(
+            database.ChatMessage.session_id == session.id,
+            database.ChatMessage.role == "user"
+        ).order_by(database.ChatMessage.timestamp.asc()).first()
+        
+        # 메시지 개수 카운트
+        message_count = db.query(database.ChatMessage).filter(
+            database.ChatMessage.session_id == session.id
+        ).count()
+        
+        # 첫 메시지 가져오기
+        first_message_query = first_message.query if first_message else None
+        
+        # 챗봇 세션 응답 객체 생성
+        result.append(ChatSessionResponse(
+            id=session.id,
+            query=first_message_query,
+            created_at=session.created_at.isoformat(),
+            updated_at=session.updated_at.isoformat(),
+            message_count=message_count
+        ))
+    
+    return result
+
+@app.get(
+        "/api/chat/sessions/{session_id}", 
+        summary="특정 챗봇 대화방(세션) 조회",
+        description="특정 챗봇 대화방의 모든 메시지를 조회합니다.",
+        response_model=ChatSessionWithMessages)
+async def get_chat_session(
+    session_id: int, 
+    db: Session = Depends(get_db)
+    ):
+    """특정 챗봇 세션과 모든 메시지를 조회합니다."""
+    session = db.query(database.ChatSession).filter(database.ChatSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
+    
+    # 해당 세션의 모든 메시지 조회
+    messages = db.query(database.ChatMessage).filter(
+        database.ChatMessage.session_id == session_id
+    ).order_by(database.ChatMessage.timestamp.asc()).all()
+    
+    message_list = [
+        ChatMessage(
+            id=msg.id,
+            role=msg.role,
+            query=msg.query,
+            timestamp=msg.timestamp.isoformat()
+        ) for msg in messages
+    ]
+    
+    return ChatSessionWithMessages(
+        id=session.id,
+        created_at=session.created_at.isoformat(),
+        updated_at=session.updated_at.isoformat(),
+        messages=message_list
+    )
+
+@app.delete(
+        "/api/chat/sessions/{session_id}", 
+        summary="챗봇 대화방(세션) 삭제",
+        description="특정 챗봇 대화방을 삭제합니다. 해당 세션과 관련된 모든 메시지도 함께 삭제됩니다.",
+        response_model=SuccessResponse)
+async def delete_chat_session(
+    session_id: int, 
+    db: Session = Depends(get_db)):
+    """챗봇 세션을 삭제합니다."""
+    session = db.query(database.ChatSession).filter(database.ChatSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
+    
+    db.delete(session)
+    db.commit()
+    
+    return SuccessResponse(message="세션이 성공적으로 삭제되었습니다.")
+
+@app.post(
+        "/api/chat", 
+        summary="챗봇과 대화하기",
+        description="챗봇과 대화하며 세션에 메시지를 저장합니다.",
+        response_model=ChatSessionWithMessages)
+async def chat_with_session(
+    request: ChatRequest,
+    db: Session = Depends(get_db)
+):
+    """챗봇과 대화하며 세션에 메시지를 저장합니다."""
+    
+    # 기존 세션이 있으면 사용, 없으면 새로 생성
+    if request.session_id:
+        session = db.query(database.ChatSession).filter(database.ChatSession.id == request.session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
+    else:
+        # 새 세션 생성
+        session = database.ChatSession()
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+    
+    # 사용자 메시지 저장
+    user_message = database.ChatMessage(
+        session_id=session.id,
+        role="user",
+        query=request.query
+    )
+    db.add(user_message)
+    
+    # AI 응답 생성
+    try:
+        # 기존 대화 히스토리 가져오기
+        previous_messages = db.query(database.ChatMessage).filter(
+            database.ChatMessage.session_id == session.id
+        ).order_by(database.ChatMessage.timestamp.asc()).all()
+        
+        # 대화 히스토리 포함하여 AI 에이전트 실행
+        conversation_context = ""
+        for msg in previous_messages:
+            if msg.role == "user":
+                conversation_context += f"사용자: {msg.query}\n"
+            else:
+                conversation_context += f"AI: {msg.query}\n"
+        
+        # 현재 질문과 함께 컨텍스트 전달
+        full_query = f"이전 대화:\n{conversation_context}\n\n현재 질문: {request.query}"
+        ai_response = await run_agent(full_query)
+        
+        # AI 응답 메시지 저장
+        assistant_message = database.ChatMessage(
+            session_id=session.id,
+            role="assistant",
+            query=ai_response
+        )
+        db.add(assistant_message)
+        
+        # 세션 업데이트 시간 갱신
+        session.updated_at = database.func.now()
+        
+        db.commit()
+        
+        # 전체 대화 히스토리 반환
+        all_messages = db.query(database.ChatMessage).filter(
+            database.ChatMessage.session_id == session.id
+        ).order_by(database.ChatMessage.timestamp.asc()).all()
+        
+        message_list = [
+            ChatMessage(
+                id=msg.id,
+                role=msg.role,
+                query=msg.query,
+                timestamp=msg.timestamp.isoformat()
+            ) for msg in all_messages
+        ]
+        
+        return ChatSessionWithMessages(
+            id=session.id,
+            created_at=session.created_at.isoformat(),
+            updated_at=session.updated_at.isoformat(),
+            messages=message_list
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"AI 응답 생성 중 오류가 발생했습니다: {str(e)}")
