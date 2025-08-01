@@ -24,4 +24,4 @@ COPY . .
 # 만약 외부에 있으면 따로 COPY 명령 추가 필요
 
 # uvicorn 서버 실행
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "chat_server:app", "--host", "0.0.0.0", "--port", "8000"]
