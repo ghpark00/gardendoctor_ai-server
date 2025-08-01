@@ -1,0 +1,21 @@
+# .dockerignore
+
+# 파이썬 가상환경
+.venv
+venv/
+env/
+
+# 파이썬 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# Git
+.git
+.gitignore
+
+# 기타
+.idea/
+.vscode/
+feedback.db
+retraining_pool/
