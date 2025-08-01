@@ -5,27 +5,28 @@ import torch.nn.functional as F
 import io
 from torchvision import models, transforms
 from PIL import Image
-from .config import DISEASE_CLASSES # config.py에서 상세 정보 가져오기
+from .config import DISEASE_CLASSES
+from pathlib import Path # ◀️ 수정: pathlib 임포트
 
 # --- 1. 작물별 질병 모델 설정 (2단계: Specialist Models) ---
 MODEL_CONFIG = {
     "tomato": {
-        "model_path": r"ai_models\new_tomato_classifier_ver2.pth", 
+        "model_path": Path("ai_models") / "new_tomato_classifier_ver2.pth", # ◀️ 수정
         "class_names": ['정상', '토마토잎곰팡이병', '토마토황화잎말림바이러스병', '토마토흰가루병'] 
     },
     "strawberry": {
-        "model_path": r"ai_models\no_powdery_leaf_strawberry_classifier.pth", 
+        "model_path": Path("ai_models") / "no_powdery_leaf_strawberry_classifier.pth", # ◀️ 수정
         "class_names": ['딸기꽃곰팡이병', '딸기모무늬병', '딸기열매흰가루병', '딸기잎마름병', '딸기잿빛곰팡이병', '딸기탄저병', '정상']
     },
     "pepper": {
-        "model_path": r"ai_models\pepper_classifier_ver1.pth", 
+        "model_path": Path("ai_models") / "pepper_classifier_ver1.pth", # ◀️ 수정
         "class_names": ['고추탄저병', '고추흰가루병', '정상'] 
     },
 }
 
 # --- 2. 작물 분류 모델 설정 (1단계: Router Model) ---
 ROUTER_MODEL_CONFIG = {
-    "model_path": r"ai_models\new_finetuned_plant_model.pth",
+    "model_path": Path("ai_models") / "new_finetuned_plant_model.pth", # ◀️ 수정
     "class_names": ['고추', '딸기', '토마토']
 }
 
@@ -38,7 +39,7 @@ CROP_NAME_MAP_KR_TO_EN = {
 
 # --- 4. 모델 캐시 및 전역 변수 ---
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_CACHE = {} # 로드된 모델(라우터, 스페셜리스트)을 저장하여 재사용
+MODEL_CACHE = {}
 
 # 2단계 Specialist 모델을 위한 이미지 전처리 파이프라인
 preprocess = transforms.Compose([
@@ -51,16 +52,13 @@ preprocess = transforms.Compose([
 # ✨ 1단계 Router 모델을 위한 TTA 전용 이미지 전처리 파이프라인 ✨
 tta_transform = transforms.Compose([
     transforms.Resize(256),
-    transforms.FiveCrop(224) # 중앙, 좌상, 우상, 좌하, 우하 5개 영역으로 자름
+    transforms.FiveCrop(224)
 ])
 to_tensor_transform = transforms.ToTensor()
 normalize_transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
 def load_router_model():
-    """
-    1단계 작물 분류 모델(Router Model)을 로드하고 캐시에 저장합니다.
-    """
     model_key = "router"
     if model_key in MODEL_CACHE:
         return MODEL_CACHE[model_key]["model"], None
@@ -74,7 +72,8 @@ def load_router_model():
         num_ftrs = model.classifier[1].in_features
         model.classifier[1] = nn.Linear(num_ftrs, num_classes)
         
-        model.load_state_dict(torch.load(model_path, map_location=DEVICE))
+        # ◀️ 수정: Path 객체를 str()로 변환하여 전달
+        model.load_state_dict(torch.load(str(model_path), map_location=DEVICE))
         model.to(DEVICE)
         model.eval()
 
@@ -87,9 +86,6 @@ def load_router_model():
         return None, f"라우터 모델 로드 중 오류 발생: {e}"
 
 def load_specialist_model(crop_name: str):
-    """
-    2단계 작물별 질병 모델(Specialist Model)을 로드하고 캐시에 저장합니다.
-    """
     if crop_name not in MODEL_CONFIG:
         return None, None, "지원되지 않는 작물입니다."
     
@@ -106,7 +102,8 @@ def load_specialist_model(crop_name: str):
         num_ftrs = model.classifier[1].in_features
         model.classifier[1] = torch.nn.Linear(num_ftrs, num_classes)
 
-        model.load_state_dict(torch.load(model_path, map_location=DEVICE))
+        # ◀️ 수정: Path 객체를 str()로 변환하여 전달
+        model.load_state_dict(torch.load(str(model_path), map_location=DEVICE))
         model = model.to(DEVICE)
         model.eval()
 
@@ -119,24 +116,19 @@ def load_specialist_model(crop_name: str):
         return None, None, f"'{crop_name}' 전문가 모델 로드 중 오류 발생: {e}"
 
 def classify_crop(image_bytes: bytes) -> tuple:
-    """
-    1단계: TTA를 사용하여 이미지를 받아 어떤 작물인지 분류하고 영문 키를 반환합니다.
-    """
+    # ... (내부 로직은 수정할 필요 없음)
     model, error = load_router_model()
     if error:
         return None, 0.0, error
 
     try:
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-        
-        # TTA: 10가지 버전의 이미지 생성 (5 crops * 2 flips)
         five_cropped_images = tta_transform(image)
         augmented_images = []
         for crop in five_cropped_images:
             augmented_images.append(crop)
             augmented_images.append(transforms.functional.hflip(crop))
 
-        # TTA: 10개 버전을 하나의 배치로 만들어 정규화
         tta_batch = torch.stack(
             [normalize_transform(to_tensor_transform(img)) for img in augmented_images]
         ).to(DEVICE)
@@ -145,14 +137,9 @@ def classify_crop(image_bytes: bytes) -> tuple:
         return None, 0.0, f"이미지 파일을 처리할 수 없습니다: {e}"
 
     with torch.no_grad():
-        # TTA: 10개 버전에 대해 한 번에 예측 수행
         outputs = model(tta_batch)
         probabilities = F.softmax(outputs, dim=1)
-        
-        # TTA: 10개 버전의 예측 확률을 평균
         mean_probabilities = torch.mean(probabilities, dim=0)
-        
-        # TTA: 평균 확률에서 최종 예측 결과 도출
         confidence, predicted_idx = torch.max(mean_probabilities, 0)
 
     predicted_class_name_kr = ROUTER_MODEL_CONFIG["class_names"][predicted_idx.item()]
@@ -166,16 +153,13 @@ def classify_crop(image_bytes: bytes) -> tuple:
     return crop_name_en, confidence_score, None
 
 def predict_disease(crop_name: str, image_bytes: bytes) -> tuple:
-    """
-    2단계: 지정된 작물 모델을 사용하여 질병을 예측합니다.
-    """
+    # ... (내부 로직은 수정할 필요 없음)
     model, class_names, error = load_specialist_model(crop_name)
     if error:
         return None, 0.0, error
 
     try:
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-        # 2단계에서는 TTA를 사용하지 않고 기존의 단일 CenterCrop으로 예측
         image_tensor = preprocess(image).unsqueeze(0).to(DEVICE)
     except Exception as e:
         return None, 0.0, f"이미지 파일을 처리할 수 없습니다: {e}"

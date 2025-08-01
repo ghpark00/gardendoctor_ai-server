@@ -2,38 +2,27 @@
 from ultralytics import YOLO
 from PIL import Image
 import io
+from pathlib import Path # ◀️ 수정: pathlib 임포트
 
-# YOLOv8n 모델 로드 (사전 학습된 범용 모델)
-# 실제 서비스에서는 '잎', '줄기' 등 특정 객체를 학습시킨 커스텀 모델 사용을 권장합니다.
-model = YOLO(r'ai_models\validation_yolo_ver3.pt') 
+# ◀️ 수정 시작
+# YOLOv8n 모델 경로를 pathlib을 사용하여 설정
+model_path = Path("ai_models") / "validation_yolo_ver3.pt"
+# Path 객체를 문자열로 변환하여 모델 로드
+model = YOLO(str(model_path)) 
+# ◀️ 수정 끝
 
-# COCO 데이터셋에서 식물, 과일, 채소와 관련 있는 객체 목록
-# 커스텀 모델을 사용한다면 ['leaf', 'stem', 'fruit'] 와 같이 변경할 수 있습니다.
+# ... (이하 동일)
 RELEVANT_OBJECT_NAMES = [
     'crop_part'
 ]
 
 def validate_image_content(image_bytes: bytes) -> tuple[bool, str]:
-    """
-    YOLOv8 모델을 사용하여 이미지에 농작물 관련 객체가 있는지 확인합니다.
-
-    Args:
-        image_bytes: 검사할 이미지의 바이트 데이터입니다.
-
-    Returns:
-        A tuple containing:
-        - bool: 관련 객체가 있으면 True, 없으면 False.
-        - str: 감지된 객체 이름 또는 실패 메시지.
-    """
     try:
         image = Image.open(io.BytesIO(image_bytes))
-        results = model(image, conf=0.1, verbose=False) # 모델 추론 (상세 로그 비활성화)
+        results = model(image, conf=0.1, verbose=False)
         
-
-        # 탐지된 모든 객체 이름을 추출
         detected_names = {model.names[int(c)] for r in results for c in r.boxes.cls}
 
-        # 관련 객체가 하나라도 있는지 확인
         for name in detected_names:
             if name in RELEVANT_OBJECT_NAMES:
                 print(f"✅ 유효성 검사 성공: 객체 '{name}' 감지.")
@@ -44,5 +33,4 @@ def validate_image_content(image_bytes: bytes) -> tuple[bool, str]:
 
     except Exception as e:
         print(f"🔥 이미지 유효성 검사 중 오류 발생: {e}")
-        # 유효성 검사 중 오류 발생 시, 분석을 중단하고 사용자에게 알림
         return False, f"이미지 유효성 검사 중 오류가 발생했습니다: {e}"
