@@ -46,7 +46,7 @@ def knowledge_with_fallback(query: str) -> str:
         print(f"[DEBUG] 벡터 DB 응답: {response[:100]}...")  # 디버깅용
         
         fallback_phrases = [
-           "찾지 못했습니다",
+            "찾지 못했습니다",
             "정확한 답변을 찾지 못했습니다", 
             "관련 정보가 없습니다",
             "해당 질문에 대한",
