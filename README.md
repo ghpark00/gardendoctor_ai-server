@@ -21,5 +21,11 @@ ai-env\Scripts\activate
 # 서버 실행
 uvicorn chat_server:app --reload --port 8000
 
+# 도커 이미지 빌드
+docker build -t gardendoctor-api:1.0 .
+
+# 도커 컨테이너 실행
+docker run -d -p 8000:8000 gardendoctor-api:1.0
+
 # swagger
 http://localhost:8000/docs
