@@ -50,3 +50,7 @@ uploaded_images/
 # OS
 .DS_Store
 Thumbs.db
+
+# Large documents
+*.docx
+docs/*.docx
