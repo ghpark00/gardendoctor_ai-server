@@ -9,6 +9,8 @@ This repository contains the AI server component of GardenDoctor, including imag
 ## 1. Project Overview
 
 **GardenDoctor** is an integrated urban agriculture support application that helps beginner urban farmers manage crops more effectively.
+
+
 <img width="184" height="398" alt="image" src="https://github.com/user-attachments/assets/c3a727a1-dd3c-481b-a951-c68129039fbf" /><img width="177" height="407" alt="image" src="https://github.com/user-attachments/assets/640343a2-335b-4f78-a1d9-52d1668fc067" />
 
 
@@ -99,6 +101,10 @@ The chatbot architecture uses:
 * LLM API integration for natural language response generation
 
 This allows the service to provide follow-up explanations and management guidance after the AI diagnosis result.
+
+<img width="213" height="519" alt="image" src="https://github.com/user-attachments/assets/4d4815bf-c295-45a2-8b3f-fa2610ea5fb6" /><img width="217" height="533" alt="image" src="https://github.com/user-attachments/assets/a4c3432a-4a8a-412a-a1bc-2083a75c35fa" />
+
+
 
 ---
 
