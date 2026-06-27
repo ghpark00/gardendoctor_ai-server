@@ -39,6 +39,11 @@ ENV/
 embeddings/faiss_index/
 embeddings/downloads/
 
+# Runtime data
+feedback.db
+retraining_pool/
+uploaded_images/
+
 # 로그 파일
 *.log
 
