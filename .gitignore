@@ -39,19 +39,14 @@ ENV/
 embeddings/faiss_index/
 embeddings/downloads/
 
+# Runtime data
+feedback.db
+retraining_pool/
+uploaded_images/
+
 # 로그 파일
 *.log
 
 # OS
 .DS_Store
 Thumbs.db
-
-cat >> .gitignore << 'EOF'
-
-# Model weights / checkpoints
-*.pth
-*.pt
-*.ckpt
-*.onnx
-ai_models/
-EOF

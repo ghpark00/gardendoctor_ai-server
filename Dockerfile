@@ -17,11 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 소스 코드 복사
 COPY . .
 
-# AI 모델 파일 복사 (app/core/predict.py 에서 참조하는 경로 맞춤)
+# AI 모델 파일 복사 (ai_server/inference/predict.py 에서 참조하는 경로 맞춤)
 # 만약 모델 파일이 별도 경로에 있다면, 해당 위치로 변경 필요
 # 여기서는 프로젝트 내 app/ai_models 폴더 가정
 # (이미 COPY . . 했으므로 별도 명령 없어도 포함됨)
 # 만약 외부에 있으면 따로 COPY 명령 추가 필요
 
 # uvicorn 서버 실행
-CMD ["uvicorn", "chat_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "ai_server.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
