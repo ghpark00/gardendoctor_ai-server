@@ -9,7 +9,9 @@ This repository contains the AI server component of GardenDoctor, including imag
 ## 1. Project Overview
 
 **GardenDoctor** is an integrated urban agriculture support application that helps beginner urban farmers manage crops more effectively.
-<img width="184" height="398" alt="image" src="https://github.com/user-attachments/assets/c3a727a1-dd3c-481b-a951-c68129039fbf" />
+<img width="184" height="398" alt="image" src="https://github.com/user-attachments/assets/c3a727a1-dd3c-481b-a951-c68129039fbf" /><img width="177" height="407" alt="image" src="https://github.com/user-attachments/assets/640343a2-335b-4f78-a1d9-52d1668fc067" />
+
+
 
 
 Urban farming users often struggle with limited farming knowledge, delayed expert consultation, and difficulty responding to crop diseases or pests. GardenDoctor addresses these issues by providing:
@@ -103,6 +105,7 @@ This allows the service to provide follow-up explanations and management guidanc
 ## 4. System Architecture
 
 The overall GardenDoctor system consists of the following layers:
+<img width="945" height="821" alt="image" src="https://github.com/user-attachments/assets/1d5e1572-a0f4-4f22-a5f2-f1eb9188a1e0" />
 
 ```text
 Client Layer
@@ -134,6 +137,7 @@ Data Layer
 ├── FAISS Vector DB
 └── AWS S3
 ```
+<img width="945" height="196" alt="image" src="https://github.com/user-attachments/assets/1a81b72a-a61a-4418-925d-de81db64dc11" />
 
 ---
 
